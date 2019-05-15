@@ -11,6 +11,22 @@
                         <div class="form-row">
                             <div class="col-md-9">
                                 <div class="form-row">
+                                    {{-- 面包屑开始 --}}
+                                    <div class="col-auto category-breadcrumb">
+                                        <a href="{{ route('products.index') }}" class="all-products">全部</a>
+                                        @if($category)
+                                        @foreach($category->ancestors as $ancestor)
+                                            <span class="category">
+                                                <a href="{{ route('products.index', ['category_id' => $ancestor->id]) }}">{{ $ancestor->name }}</a>
+                                            </span>
+                                            <span>&gt;</span>
+                                        @endforeach
+                                            {{-- 最后显示当前类目名称 --}}
+                                            <span class="category">{{ $category->name }}</span><span> ></span>
+                                            <input type="hidden" name="category_id" value="{{ $category->id }}">
+                                        @endif
+                                    </div>
+                                    {{-- 面包屑结束 --}}
                                     <div class="col-auto"><input type="text" class="form-control form-control-sm" name="search" placeholder="搜索"></div>
                                     <div class="col-auto"><button class="btn btn-primary btn-sm">搜索</button></div>
                                 </div>
@@ -28,6 +44,22 @@
                             </div>
                         </div>
                     </form>
+                    {{-- 展示子类目 --}}
+                    <div class="filters">
+                        @if($category && $category->is_directory)
+                        <div class="row">
+                            <div class="col-3 filter-key">子类目：</div>
+                            <div class="col-9 filter-values">
+                            @foreach($category->children as $child)
+                                <a href="{{ route('products.index', ['category_id' => $child->id]) }}">
+                                    {{ $child->name }}
+                                </a>
+                            @endforeach
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                    {{-- 展示子类目结束 --}}
                     <!-- 筛选组件结束 -->
                     <div class="row products-list">
                         @foreach($products as $product)

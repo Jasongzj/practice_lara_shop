@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\InvalidRequestException;
+use App\Models\Category;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,6 +28,20 @@ class ProductsController extends Controller
             });
         }
 
+        // 如果传入 category_id，并存在对应类目
+        if ($request->input('category_id') && $category = Category::query()->find($request->input('category_id'))) {
+            // 如果是父类目，则查询类目下所有子类目
+            if ($category->is_directory) {
+                $builder->whereHas('category', function (Builder $query) use ($category) {
+                    // 查询 path 为父类目开头的数据
+                    $query->where('path', 'like', $category->path . $category->id . '-%');
+                });
+            } else {
+                // 只筛选此类目下的商品
+                $builder->where('category_id', $category->id);
+            }
+        }
+
         // 如果有排序要求，则赋值给 order变量
         if ($order = $request->input('order', '')) {
             // 是否以_asc或者_desc结尾
@@ -41,10 +56,11 @@ class ProductsController extends Controller
 
         return view('products.index', [
             'products' => $products,
+            'category' => $category ?? null,
             'filters' => [
                 'search' => $search,
                 'order' => $order,
-            ]
+            ],
         ]);
     }
 
