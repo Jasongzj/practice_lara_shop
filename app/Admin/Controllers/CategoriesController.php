@@ -126,7 +126,7 @@ class CategoriesController extends Controller
     {
         // 用户输入的值通过 q 获取
         $search = $request->input('q');
-        $result = Category::query()->where('is_directory', true)
+        $result = Category::query()->where('is_directory', boolval($request->input('is_directory', true)))
             ->where('name', 'like', '%' . $search . '%')
             ->paginate();
         // 将查询结果组装成 laravel-admin 的格式
