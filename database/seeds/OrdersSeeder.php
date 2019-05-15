@@ -47,7 +47,7 @@ class OrdersSeeder extends Seeder
         $products->unique('id')->each(function (Product $product) {
             // 查出该商品的销量、评分、评价数
             $soldCount = OrderItem::query()->where('product_id', $product->id)
-                ->whereHas('orders', function ($query) {
+                ->whereHas('order', function ($query) {
                     $query->whereNotNull('paid_at');
                 })->first([
                     DB::raw('sum(amount) as sold_count')
