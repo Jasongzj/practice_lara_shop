@@ -129,4 +129,53 @@ class OrderService
 
         return $order;
     }
+
+    public function refundOrder(Order $order)
+    {
+        switch ($order->payment_method) {
+            case 'wechat':
+                $refundNo = Order::getAvailableRefundNo();
+                app('wechat_pay')->refund([
+                    'out_trade_no' => $order->no,
+                    'total_fee' => $order->total_amount * 100,
+                    'refund_fee' => $order->total_amount * 100,
+                    'out_refund_no' => $refundNo,
+                    'notify_url' => route('payment.wechat.refund_notify'),
+                ]);
+                // 更新订单为退款中
+                $order->update([
+                    'refund_no' => $refundNo,
+                    'refund_status' => Order::REFUND_STATUS_PROCESSING,
+                ]);
+                break;
+            case 'alipay':
+                $refundNo = Order::getAvailableRefundNo();
+                $ret = app('alipay')->refund([
+                    'out_trade_no' => $order->no,
+                    'refund_amount' => $order->total_amount,
+                    'out_request_no' => $refundNo,
+                ]);
+
+                // 根据文档，如果有 sub_code 表示操作失败
+                if ($ret->sub_code) {
+                    $extra = $order->extra;
+                    $extra['refund_failed_code'] = $ret->sub_code;
+                    // 将退款状态标记为退款失败
+                    $order->update([
+                        'refund_status' => Order::REFUND_STATUS_FAILED,
+                        'extra' => $extra,
+                    ]);
+                } else {
+                    // 标记为退款成功并保存退款单号
+                    $order->update([
+                        'refund_status' => Order::REFUND_STATUS_SUCCESS,
+                        'refund_no' => $refundNo,
+                    ]);
+                }
+                break;
+            default:
+                throw new InvalidRequestException('未知支付方式：' . $order->payment_method);
+                break;
+        }
+    }
 }
