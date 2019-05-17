@@ -17,6 +17,8 @@ class UserAddress extends Model
         'last_used_at',
     ];
 
+    protected $appends = ['full_address'];
+
     protected $dates = ['last_used_at'];   // 定义的字段返回一个Carbon对象
 
     public function user()
