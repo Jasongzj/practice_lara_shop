@@ -127,7 +127,7 @@
                     <button class="btn btn-success btn-sm" type="button" id="btn-received">确认收货</button>
                 </div>
                 @endif
-                @if($order->paid_at && $order->refund_status === \App\Models\Order::REFUND_STATUS_PENDING)
+                @if($order->type !== \App\Models\Order::TYPE_CROWDFUNDING && $order->paid_at && $order->refund_status === \App\Models\Order::REFUND_STATUS_PENDING)
                 <div class="refund-button">
                     <button class="btn btn-danger btn-sm" id="btn-apply-refund">申请退款</button>
                 </div>
