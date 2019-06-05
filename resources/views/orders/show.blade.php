@@ -241,8 +241,7 @@
                 //调用分期接口
                 axios.post('{{ route('payment.installment', ['order' => $order->id]) }}', { count: $(this).data('count')})
                     .then(function (response) {
-                        console.log(response.data)
-                        // 跳转分期付款页面
+                        location.href = '/installments/' + response.data.id;
                     })
             });
         });
