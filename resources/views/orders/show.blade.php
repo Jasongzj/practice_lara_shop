@@ -118,6 +118,12 @@
                         <button id="btn-wechat" class="btn btn-primary btn-sm">
                             微信支付
                         </button>
+                        {{--当订单总金额满足最低分期金额要求时显示按钮--}}
+                        @if($order->total_amount >= config('app.min_installment_amount'))
+                        <button class="btn btn-danger btn-sm" id="btn-installment">
+                            分期付款
+                        </button>
+                        @endif
                     </div>
                 @endif
 
@@ -138,6 +144,45 @@
 </div>
 </div>
 </div>
+<!-- 分期弹框开始 -->
+<div class="modal fade" id="installment-modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">选择分期期数</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered table-striped text-center">
+                    <thead>
+                    <tr>
+                        <th class="text-center">期数</th>
+                        <th class="text-center">费率</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach(config('app.installment_fee_rate') as $count => $rate)
+                        <tr>
+                            <td>{{ $count }}期</td>
+                            <td>{{ $rate }}%</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary btn-select-installment" data-count="{{ $count }}">选择</button>
+                            </td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 分期弹框结束 -->
 @endsection
 
 @section('scriptsAfterJs')
@@ -188,6 +233,17 @@
                             })
                         })
                 })
+            });
+            $('#btn-installment').click(function () {
+                $('#installment-modal').modal();
+            });
+            $('.btn-select-installment').click(function () {
+                //调用分期接口
+                axios.post('{{ route('payment.installment', ['order' => $order->id]) }}', { count: $(this).data('count')})
+                    .then(function (response) {
+                        console.log(response.data)
+                        // 跳转分期付款页面
+                    })
             });
         });
     </script>

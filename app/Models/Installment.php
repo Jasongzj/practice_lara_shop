@@ -48,7 +48,7 @@ class Installment extends Model
         return $this->hasMany(InstallmentItem::class);
     }
 
-    protected function findAvailableNo()
+    protected static function findAvailableNo()
     {
         $prefix = date('YmdHis');
         for ($i = 0; $i < 10; $i++) {
