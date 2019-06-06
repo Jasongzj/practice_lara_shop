@@ -23,7 +23,6 @@ class AppServiceProvider extends ServiceProvider
             $config = config('pay.alipay');
             $config['return_url'] = route('payment.alipay.return');
             $config['notify_url'] = ngrok_url('payment.alipay.notify');
-            // $config['notify_url'] = 'https://requestbin.leo108.com/xf5ohaxf';
 
             // 判断当前环境是否生产环境
             if (app()->environment() !== 'production') {

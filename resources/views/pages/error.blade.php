@@ -9,3 +9,4 @@
         <a href="{{ route('root') }}" class="btn btn-primary">返回首页</a>
     </div>
 </div>
+@endsection
