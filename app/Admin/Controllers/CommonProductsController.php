@@ -64,6 +64,7 @@ abstract class CommonProductsController extends Controller
 
         $form->hidden('type')->value($this->getProductType());
         $form->text('title', '商品名称')->rules('required');
+        $form->text('long_title', '商品长标题')->rules('required');
         $form->select('category_id', '类目')->options(function ($id) {
             $category = Category::find($id);
             if ($category) {
