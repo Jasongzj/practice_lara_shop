@@ -119,4 +119,6 @@ class InstallmentsController extends Controller
 
         return app('alipay')->success();
     }
+
+
 }
