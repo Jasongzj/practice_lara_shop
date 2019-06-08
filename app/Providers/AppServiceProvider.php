@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Monolog\Logger;
 use Yansongda\Pay\Pay;
+use Elasticsearch\ClientBuilder as ESClientBuilder;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,6 +46,19 @@ class AppServiceProvider extends ServiceProvider
                 $config['log']['level'] = Logger::WARNING;
             }
             return Pay::wechat($config);
+        });
+
+        // 注册一个 es 的单例对象
+        $this->app->singleton('es', function () {
+             // 从配置文件读取 Elasticsearch 服务器列表
+            $builder = ESClientBuilder::create()->setHosts(config('database.elasticsearch.hosts'));
+
+            if (app()->environment() === 'local') {
+                // 配置日志，Elasticsearch 的请求和返回数据打印到日志中，方便调试
+                $builder->setLogger(app('log')->driver());
+            }
+
+            return $builder->build();
         });
     }
 
