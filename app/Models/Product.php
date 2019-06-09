@@ -62,4 +62,33 @@ class Product extends Model
                 return $properties->pluck('value')->all();
             });
     }
+
+    public function toESArray()
+    {
+        $arr = array_only($this->toArray(), [
+            'id',
+            'type',
+            'title',
+            'category_id',
+            'long_title',
+            'on_sale',
+            'rating',
+            'sold_count',
+            'review_count',
+            'price',
+        ]);
+
+        $arr['category'] = $this->category ? explode(' - ', $this->category->full_name) : '';
+        $arr['category_path'] = $this->category ? $this->category->path : '';
+        // strip_tags 可以去除 html 标签
+        $arr['description'] = strip_tags($this->description);
+        $arr['skus'] = $this->skus->map(function (ProductSku $sku) {
+            return array_only($sku->toArray(), ['title', 'description', 'price']);
+        });
+        $arr['properties'] = $this->properties->map(function (ProductProperty $property) {
+            return array_only($property->toArray(), ['name', 'value']);
+        });
+
+        return $arr;
+    }
 }
