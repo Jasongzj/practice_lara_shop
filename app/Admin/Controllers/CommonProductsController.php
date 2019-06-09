@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncOneProductsToES;
 use App\Models\Category;
 use App\Models\Product;
 use Encore\Admin\Controllers\HasResourceActions;
@@ -94,6 +95,12 @@ abstract class CommonProductsController extends Controller
         $form->saving(function (Form $form) {
             $form->model()->price = collect($form->input('skus'))->where(Form::REMOVE_FLAG_NAME, 0)
                 ->min('price') ?: 0;
+        });
+
+        // 定义事件回调，在模型保存完成时触发
+        $form->saved(function (Form $form) {
+            $product = $form->model();
+            $this->dispatch(new SyncOneProductsToES($product));
         });
 
         return $form;
