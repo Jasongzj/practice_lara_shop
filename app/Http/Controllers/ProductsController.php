@@ -75,7 +75,54 @@ class ProductsController extends Controller
                     ],
                 ];
             }
+        }
 
+        $propertyFilters = [];
+        if ($filterString = $request->input('filters')) {
+            $filterArray = explode('|', $filterString);
+            foreach ($filterArray as $filter) {
+                list($name, $value) = explode(':', $filter);
+
+                // 将用户筛选的属性添加到数组中
+                $propertyFilters[$name] = $value;
+
+                // 添加到 filter 类型中
+                $params['body']['query']['bool']['filter'][] = [
+                    // 由于我们要筛选的是 nested 类型下的属性，因此需要用 nested 查询
+                    'nested' => [
+                        // 指明 nested 字段
+                        'path'  => 'properties',
+                        'query' => [
+                            ['term' => ['properties.name' => $name]],
+                            ['term' => ['properties.value' => $value]],
+                        ],
+                    ],
+                ];
+            }
+        }
+
+        if ($search || isset($category)) {
+            $params['body']['aggs'] = [
+                'properties' => [
+                    'nested' => [
+                        'path' => 'properties',
+                    ],
+                    'aggs' => [
+                        'properties' => [
+                            'terms' => [
+                                'field' => 'properties.name',
+                            ],
+                            'aggs' => [
+                                'value' => [
+                                    'terms' => [
+                                        'field' => 'properties.value',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
         }
 
         $result = app('es')->search($params);
@@ -84,6 +131,21 @@ class ProductsController extends Controller
             ->whereIn('id', $productIds)
             ->orderByRaw(sprintf("FIND_IN_SET(id, '%s')", join(',', $productIds)))
             ->get();
+
+        $properties = [];
+        // 如果返回结果有 aggregations 字段，说明做了分面搜索
+        if (isset($result['aggregations'])) {
+            $properties = collect($result['aggregations']['properties']['properties']['buckets'])
+                ->map(function ($bucket) {
+                    return [
+                        'key' => $bucket['key'],
+                        'values' => collect($bucket['value']['buckets'])->pluck('key')->all(),
+                    ];
+                })
+                ->filter(function ($property) use ($propertyFilters) {
+                    return count($property['values']) > 1 && !isset($propertyFilters[$property['key']]);
+                });
+        }
 
         $pageOption = [
             'path' => route('products.index', false), // 手动构建分页url
@@ -97,6 +159,8 @@ class ProductsController extends Controller
                 'order' => $order,
             ],
             'category' => $category ?? null,
+            'properties' => $properties,
+            'propertiesFilters' => $propertyFilters,
         ]);
     }
 
