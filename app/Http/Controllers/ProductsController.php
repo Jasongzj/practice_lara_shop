@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\SearchBuilders\ProductSearchBuilder;
+use App\Services\ProductService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -63,8 +64,7 @@ class ProductsController extends Controller
         $result = app('es')->search($builder->getParams());
         $productIds = collect($result['hits']['hits'])->pluck('_id')->all();
         $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->orderByRaw(sprintf("FIND_IN_SET(id, '%s')", join(',', $productIds)))
+            ->byIds($productIds)
             ->get();
 
         $properties = [];
@@ -99,7 +99,7 @@ class ProductsController extends Controller
         ]);
     }
 
-    public function show(Product $product, Request $request)
+    public function show(Product $product, Request $request, ProductService $productService)
     {
         if (!$product->on_sale) {
             throw new InvalidRequestException('商品未上架');
@@ -117,7 +117,17 @@ class ProductsController extends Controller
             ->limit(10)
             ->get();
 
-        return view('products.show', ['product' => $product, 'favored' => $favored, 'reviews' => $reviews]);
+        $similarProductIds = $productService->getSimilarProductIds($product, 4);
+        $similarProducts = Product::query()
+            ->byIds($similarProductIds)
+            ->get();
+
+        return view('products.show', [
+            'product' => $product,
+            'favored' => $favored,
+            'reviews' => $reviews,
+            'similar' => $similarProducts,
+        ]);
     }
 
     public function favor(Product $product, Request $request)
