@@ -14,7 +14,6 @@
         "composer-plugin-api": "^1.1",
         "elasticsearch/elasticsearch": "~6.0",
         "encore/laravel-admin": "1.6.8",
-        "endroid/qr-code": "^3.6",
         "fideloper/proxy": "^4.0",
         "laravel/framework": "5.7.*",
         "laravel/horizon": "^3.2",
@@ -59,7 +58,7 @@
             "Tests\\": "tests/"
         }
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true,
     "scripts": {
         "post-autoload-dump": [
