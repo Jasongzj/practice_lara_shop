@@ -6,6 +6,7 @@ use App\Exceptions\InvalidRequestException;
 use App\Models\Category;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\SearchBuilders\ProductSearchBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -16,22 +17,19 @@ class ProductsController extends Controller
     {
         $page = $request->input('page', 1);
         $perPage = 16;
+        // 新建查询构造器对象，设置只搜索上架商品，设置分页
+        $builder =  (new ProductSearchBuilder())->onSale()->paginate($perPage, $page);
 
-        $params = [
-            'index' => 'products',
-            'type'  => '_doc',
-            'body'  => [
-                'from' => ($page - 1) * $perPage,
-                'size' => $perPage,
-                'query' => [
-                    'bool' => [
-                        'filter' => [
-                            ['term' => ['on_sale' => true]],
-                        ],
-                    ],
-                ],
-            ],
-        ];
+        // 如果传入 category_id，并存在对应类目
+        if ($request->input('category_id') && $category = Category::query()->find($request->input('category_id'))) {
+            $builder->category($category);
+        }
+
+        // 判断是否有提交search参数，如果有就赋值给search变量
+        if ($search = $request->input('search', '')) {
+            $keywords = array_filter(explode(' ', $search));
+            $builder->keywords($keywords);
+        }
 
         // 如果有排序要求，则赋值给 order变量
         if ($order = $request->input('order', '')) {
@@ -39,41 +37,8 @@ class ProductsController extends Controller
             if (preg_match('/^(.+)_(asc|desc)$/', $order, $m)) {
                 // 如果开头满足以下数组的值，则是合法的排序值
                 if (in_array($m[1], ['price', 'sold_count', 'rating'])) {
-                    $params['body']['sort'] = [$m[1] => $m[2]];
+                    $builder->orderBy($m[1], $m[2]);
                 }
-            }
-        }
-
-        // 如果传入 category_id，并存在对应类目
-        if ($request->input('category_id') && $category = Category::query()->find($request->input('category_id'))) {
-            // 如果是父类目，则查询类目下所有子类目
-            if ($category->is_directory) {
-                $params['body']['query']['bool']['filter'][] = [
-                    'prefix' => ['category_path' => $category->path . $category->id . '-'],
-                ];
-            } else {
-                $params['body']['query']['bool']['filter'][] = ['term' => ['category_id' => $category->id]];
-            }
-        }
-
-        // 判断是否有提交search参数，如果有就赋值给search变量
-        if ($search = $request->input('search', '')) {
-            $keywords = array_filter(explode(' ', $search));
-            foreach ($keywords as $keyword) {
-                $params['body']['query']['bool']['must'][] = [
-                    'multi_match' => [
-                        'query' => $keyword,
-                        'fields' => [
-                            'title^3',
-                            'long_title^2',
-                            'category^2',
-                            'description',
-                            'skus_title',
-                            'skus_description',
-                            'properties_value',
-                        ],
-                    ],
-                ];
             }
         }
 
@@ -87,44 +52,15 @@ class ProductsController extends Controller
                 $propertyFilters[$name] = $value;
 
                 // 添加到 filter 类型中
-                $params['body']['query']['bool']['filter'][] = [
-                    // 由于我们要筛选的是 nested 类型下的属性，因此需要用 nested 查询
-                    'nested' => [
-                        // 指明 nested 字段
-                        'path'  => 'properties',
-                        'query' => [
-                            ['term' => ['properties.search_value' => $filter]],
-                        ],
-                    ],
-                ];
+                $builder->propertyFilter($name, $value);
             }
         }
 
         if ($search || isset($category)) {
-            $params['body']['aggs'] = [
-                'properties' => [
-                    'nested' => [
-                        'path' => 'properties',
-                    ],
-                    'aggs' => [
-                        'properties' => [
-                            'terms' => [
-                                'field' => 'properties.name',
-                            ],
-                            'aggs' => [
-                                'value' => [
-                                    'terms' => [
-                                        'field' => 'properties.value',
-                                    ],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-            ];
+            $builder->aggregateProperties();
         }
 
-        $result = app('es')->search($params);
+        $result = app('es')->search($builder->getParams());
         $productIds = collect($result['hits']['hits'])->pluck('_id')->all();
         $products = Product::query()
             ->whereIn('id', $productIds)
