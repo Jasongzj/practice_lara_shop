@@ -13,9 +13,10 @@ class CreateSeckillProductsTable extends Migration
      */
     public function up()
     {
+        Schema::dropIfExists('seckill_products');
         Schema::create('seckill_products', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('product_id');
+            $table->increments('id');
+            $table->unsignedInteger('product_id');
             $table->foreign('product_id')->references('id')->on('products')->onDelete('cascade');
             $table->dateTime('start_at');
             $table->dateTime('end_at');
