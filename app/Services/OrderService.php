@@ -134,6 +134,9 @@ class OrderService
     public function seckill(User $user, UserAddress $address, ProductSku $sku)
     {
         $order = DB::transaction(function () use ($user, $address, $sku) {
+            if ($sku->decreaseStock(1) <= 0) {
+                throw new InvalidRequestException('该商品库存不足');
+            }
             // 更新此地址最后使用时间
             $address->update(['last_used_at' => Carbon::now()]);
             // 创建一笔订单
@@ -158,9 +161,6 @@ class OrderService
             $item->product()->associate($sku->product_id);
             $item->productSku()->associate($sku);
             $item->save();
-            if ($sku->decreaseStock(1) <= 0) {
-                throw new InvalidRequestException('该商品库存不足');
-            }
             return $order;
         });
         dispatch(new CloseOrder($order, config('app.seckill_order_ttl')));
