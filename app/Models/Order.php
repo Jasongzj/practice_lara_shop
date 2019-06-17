@@ -34,10 +34,12 @@ class Order extends Model
 
     const TYPE_NORMAL = 'normal';
     const TYPE_CROWDFUNDING = 'crowdfunding';
+    const TYPE_SECKILLL = 'seckill';
 
     public static $typeMap = [
         self::TYPE_NORMAL       => '普通商品订单',
         self::TYPE_CROWDFUNDING => '众筹商品订单',
+        self::TYPE_SECKILLL     => '秒杀商品订单',
     ];
 
     protected $fillable = [

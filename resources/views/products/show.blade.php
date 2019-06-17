@@ -97,10 +97,25 @@
                             @else
                             <a class="btn btn-primary" href="{{ route('login') }}">请先登录</a>
                             @endif
+                            {{--秒杀按钮开始--}}
+                        @elseif($product->type === \App\Models\Product::TYPE_SECKILL)
+                            @if(\Illuminate\Support\Facades\Auth::check())
+                                @if($product->seckill->is_before_start)
+                                <button class="btn btn-primary btn-seckill disabled countdown">抢购倒计时</button>
+                                @elseif($product->seckill->is_after_end)
+                                <button class="btn btn-primary btn-seckill disabled">抢购已结束</button>
+                                @else
+                                <button class="btn btn-primary btn-seckill">立即抢购</button>
+                                @endif
+                            @else
+                                    <a href="{{ route('login') }}" class="btn btn-primary">请先登录</a>
+                            @endif
+                            {{--秒杀按钮结束--}}
                         @else
                         <button class="btn btn-primary btn-add-to-cart">加入购物车</button>
                         @endif
                         {{-- 众筹下单按钮结束 --}}
+
                     </div>
                 </div>
             </div>
@@ -195,6 +210,10 @@
 @endsection
 
 @section('scriptsAfterJs')
+<!-- 如果是秒杀商品并且尚未开始秒杀，则引入 momentjs 类库 -->
+@if($product->type == \App\Models\Product::TYPE_SECKILL && $product->seckill->is_before_start)
+    <script src="https://cdn.bootcss.com/moment.js/2.22.1/moment.min.js"></script>
+@endif
 <script>
     $(document).ready(function () {
         $('[data-toggle="tooltip"]').tooltip({trigger: 'hover'});
@@ -334,7 +353,85 @@
                         }
                     });
             });
-        })
+        });
+
+        // 如果是秒杀商品且未开始秒杀
+        @if($product->type === \App\Models\Product::TYPE_SECKILL && $product->seckill->is_before_start)
+            // 将秒杀开始时间转为一个 moment 对象
+            var startTime = moment.unix({{ $product->seckill->start_at->getTimestamp() }});
+            // 设一个定时器
+            var hdl = setInterval(function () {
+                var now = moment();
+                if (now.isAfter(startTime)) {
+                    // 将按钮的 disabled 类移除，修改按钮文字
+                    $('.btn-seckill').removeClass('.disabled').removeClass('countdown').text('立即抢购');
+                    // 清除定时器
+                    clearInterval(hdl);
+                    return;
+                }
+
+                // 获取当前时间与秒杀开始时间相差的小时、分钟、秒数
+                var hourDiff = startTime.diff(now, 'hours');
+                var minDiff = startTime.diff(now, 'minutes') % 60;
+                var secDiff = startTime.diff(now, 'seconds') % 60;
+                $('.btn-seckill').text('抢购倒计时 ' + hourDiff + ':' + minDiff + ':' + secDiff);
+            }, 500);
+        @endif
+
+        // 秒杀按钮点击事件
+        $('.btn-seckill').click(function () {
+            if ($(this).hasClass('disabled')) {
+                return;
+            }
+            if (!$('label.active input[name=skus]').val()) {
+                swal('请先选择商品');
+                return;
+            }
+
+            var addresses = {!! json_encode(\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::user()->addresses : []) !!};
+
+            var addressSelector = $('<select class="form-control"></select>');
+
+            addresses.forEach(function (address) {
+                addressSelector.append("<option value='" + address.id + "'>" + address.full_address + ' ' + address.contact_name + ' ' + address.contact_phone + '</option>');
+            });
+
+            swal({
+                text: '选择收货地址',
+                content: addressSelector[0],
+                buttons: ['取消', '确定']
+            }).then(function (ret) {
+                if (!ret) {
+                    return;
+                }
+                var req = {
+                    address_id: addressSelector.val(),
+                    sku_id: $('label.active input[name=skus]').val()
+                };
+                axios.post('{{ route('seckill_orders.store') }}', req)
+                    .then(function (response) {
+                        swal('订单提交成功', '', 'success')
+                            .then(() => {
+                                location.href = '/orders/' + response.data.id;
+                            });
+                    }, function (error) {
+                        if (error.response.status === 422) {
+                            var html = '<div>';
+                            _.each(error.response.data.errors, function (errors) {
+                                _.each(errors, function (error) {
+                                    html += error + '<br>';
+                                });
+                            });
+                            html += '</div>';
+                            swal({content: $(html)[0], icon: 'error'});
+                        } else if(error.response.status === 403) {
+                            swal(error.response.data.msg, '', 'error');
+                        } else {
+                            swal('系统错误', '', 'error');
+                        }
+                    });
+            });
+        });
     });
 </script>
 @endsection
