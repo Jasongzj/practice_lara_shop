@@ -41,6 +41,7 @@ class CloseOrder implements ShouldQueue
      */
     public function handle()
     {
+        Log::info('开始关闭订单');
         // 订单已支付，直接退出
         if ($this->order->paid_at) {
             return ;
@@ -62,5 +63,6 @@ class CloseOrder implements ShouldQueue
                 $this->order->couponCode->decreaseUsed();
             }
         });
+        Log::info('关闭订单结束');
     }
 }
