@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Http\ViewComposers\CategoryTreeComposer;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Monolog\Logger;
 use Yansongda\Pay\Pay;
 use Elasticsearch\ClientBuilder as ESClientBuilder;
@@ -71,5 +74,11 @@ class AppServiceProvider extends ServiceProvider
     {
         View::composer(['products.index', 'products.show'], CategoryTreeComposer::class);
         Carbon::setLocale('zh');
+
+        if (app()->environment('local')) {
+            DB::listen(function ($query) {
+                Log::info(Str::replaceArray('?', $query->bindings, $query->sql));
+            });
+        }
     }
 }

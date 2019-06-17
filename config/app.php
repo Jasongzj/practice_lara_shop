@@ -230,7 +230,7 @@ return [
     // 未支付订单关闭时间
     'order_ttl' => 1800,
     // 未支付秒杀订单关闭时间
-    'seckill_order_ttl' => 600,
+    'seckill_order_ttl' => 60,
 
     'ngrok_url' => env('NGROK_URL'),
 

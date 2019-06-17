@@ -384,7 +384,7 @@
                 return;
             }
             if (!$('label.active input[name=skus]').val()) {
-                swal('请先选择商品');
+                swal('请先选择商品','', 'error');
                 return;
             }
 
@@ -404,8 +404,9 @@
                 if (!ret) {
                     return;
                 }
+                var address = _.find(addresses, {id: parseInt(addressSelector.val())});
                 var req = {
-                    address_id: addressSelector.val(),
+                    address: _.pick(address, ['province','city','district','address','zip','contact_name','contact_phone']),
                     sku_id: $('label.active input[name=skus]').val()
                 };
                 axios.post('{{ route('seckill_orders.store') }}', req)

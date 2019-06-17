@@ -52,6 +52,10 @@ class CloseOrder implements ShouldQueue
             // 返还库存
             foreach ($this->order->items as $item) {
                 $item->productSku->addStock($item->amount);
+                // 如果订单是秒杀订单，并且对应商品在上架且未到截止时间
+                if ($item->order->type === Order::TYPE_SECKILLL && $item->product->on_sale && !$item->product->seckill->is_after_end) {
+                    \Redis::incr('seckill_sku_' . $item->prodcutSku->id);
+                }
             }
             // 减少优惠券用量
             if ($this->order->couponCode) {
